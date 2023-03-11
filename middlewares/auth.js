@@ -1,20 +1,19 @@
-const jwt = require('jsonwebtoken');
-const config = require('config');
+const jwt = require("jsonwebtoken");
 
 async function auth(req, res, next) {
-  const token = req.header('admin-token');
+  const token = req.header("admin-token");
 
   if (!token) {
     return res.status(401).json({
-      errorMsg: 'No token, authorization denied',
+      errorMsg: "No token, authorization denied",
     });
   }
 
   try {
-    jwt.verify(token, config.get('jwt_secret'), (err, admin) => {
+    jwt.verify(token, process.env.JWT_SECRET, (err, admin) => {
       if (err) {
         return res.status(401).json({
-          errorMsg: 'No token. Not authenticated',
+          errorMsg: "No token. Not authenticated",
         });
       }
 
@@ -23,7 +22,7 @@ async function auth(req, res, next) {
     });
   } catch (err) {
     return res.status(401).json({
-      errorMsg: 'Internal server error. Not authenticated',
+      errorMsg: "Internal server error. Not authenticated",
     });
   }
 }

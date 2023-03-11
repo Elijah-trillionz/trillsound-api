@@ -1,38 +1,37 @@
-const express = require('express');
-const db = require('../config/firebase');
-const uuid = require('uuid');
-const config = require('config');
-const bcrypt = require('bcryptjs');
-const jwt = require('jsonwebtoken');
-const auth = require('../middlewares/auth');
+const express = require("express");
+const db = require("../config/firebase");
+const uuid = require("uuid");
+const bcrypt = require("bcryptjs");
+const jwt = require("jsonwebtoken");
+const auth = require("../middlewares/auth");
 const router = express.Router();
 
 // route:  /api/admin/register
 // desc:   register an admin
 // access: public
 
-router.post('/register', async (req, res) => {
+router.post("/register", async (req, res) => {
   const { username, password, zone, socialHandle, adminAuth } = req.body;
 
   if (!username || !password || !zone) {
     return res.status(400).json({
-      errorMsg: 'All fields are required',
+      errorMsg: "All fields are required",
     });
   }
 
-  if (adminAuth !== config.get('admin_auth')) {
+  if (adminAuth !== process.env.ADMIN_AUTH) {
     return res.status(401).json({
-      errorMsg: 'Unauthorized, you cannot create an admin account',
+      errorMsg: "Unauthorized, you cannot create an admin account",
     });
   }
 
   try {
     // check if username exists
-    const adminsRef = await db.collection('admins').doc(username).get();
+    const adminsRef = await db.collection("admins").doc(username).get();
 
     if (adminsRef.exists) {
       return res.status(400).json({
-        errorMsg: 'Username already exists, pick another one.',
+        errorMsg: "Username already exists, pick another one.",
       });
     }
 
@@ -40,7 +39,7 @@ router.post('/register', async (req, res) => {
       if (err) throw err;
       bcrypt.hash(password, salt, async (err, hashedPassword) => {
         if (err) throw err;
-        await db.collection('admins').doc(username).set({
+        await db.collection("admins").doc(username).set({
           id: uuid.v4(),
           zone,
           password: hashedPassword,
@@ -50,11 +49,11 @@ router.post('/register', async (req, res) => {
       });
     });
     res.json({
-      msg: 'Account created successfully',
+      msg: "Account created successfully",
     });
   } catch (err) {
     return res.status(500).json({
-      errorMsg: 'Internal server error',
+      errorMsg: "Internal server error",
     });
   }
 });
@@ -63,17 +62,17 @@ router.post('/register', async (req, res) => {
 // desc:   admin login
 // access: public
 
-router.post('/login', async (req, res) => {
+router.post("/login", async (req, res) => {
   const { username, password } = req.body;
 
   if (!username || !password) {
     return res.status(400).json({
-      errorMsg: 'All fields are required',
+      errorMsg: "All fields are required",
     });
   }
 
   try {
-    const userRef = await db.collection('admins').doc(username).get();
+    const userRef = await db.collection("admins").doc(username).get();
 
     if (!userRef.exists) {
       return res.status(400).json({
@@ -86,18 +85,18 @@ router.post('/login', async (req, res) => {
       if (err) throw err;
       if (!isMatch) {
         return res.status(400).json({
-          errorMsg: 'Password is incorrect. If forgotten contact Elijah.',
+          errorMsg: "Password is incorrect. If forgotten contact Elijah.",
         });
       }
 
       jwt.sign(
         { username, id: userRef.data().id },
-        config.get('jwt_secret'),
-        { algorithm: 'HS256', expiresIn: 86400 },
+        process.env.JWT_SECRET,
+        { algorithm: "HS256", expiresIn: 86400 },
         (err, token) => {
           if (err) throw err;
           res.json({
-            msg: 'Log in successful',
+            msg: "Log in successful",
             token,
           });
         }
@@ -105,7 +104,7 @@ router.post('/login', async (req, res) => {
     });
   } catch (err) {
     return res.status(500).json({
-      errorMsg: 'Internal server error',
+      errorMsg: "Internal server error",
     });
   }
 });
@@ -114,11 +113,11 @@ router.post('/login', async (req, res) => {
 // desc:   get the signed-in admin
 // access: private
 
-router.get('/', auth, async (req, res) => {
+router.get("/", auth, async (req, res) => {
   const { username: userName } = req.admin;
 
   try {
-    const adminsRef = await db.collection('admins').doc(userName).get();
+    const adminsRef = await db.collection("admins").doc(userName).get();
     const { username, id, zone, socialHandle } = adminsRef.data();
 
     const songsUploaded = await getAdminSongs(username);
@@ -143,7 +142,7 @@ router.get('/', auth, async (req, res) => {
     });
   } catch (err) {
     return res.status(500).json({
-      errorMsg: 'Internal server error',
+      errorMsg: "Internal server error",
     });
   }
 });
@@ -151,8 +150,8 @@ router.get('/', auth, async (req, res) => {
 const getAdminSongs = async (username) => {
   try {
     const songsRef = await db
-      .collection('songs')
-      .where('admin', '==', username)
+      .collection("songs")
+      .where("admin", "==", username)
       .get();
 
     // if (songsRef.empty) {
@@ -173,7 +172,7 @@ const getAdminSongs = async (username) => {
   } catch (err) {
     return {
       status: 500,
-      errorMsg: 'Internal server error',
+      errorMsg: "Internal server error",
     };
   }
 };
@@ -181,8 +180,8 @@ const getAdminSongs = async (username) => {
 const getAdminBios = async (username) => {
   try {
     const biosRef = await db
-      .collection('bios')
-      .where('admin', '==', username)
+      .collection("bios")
+      .where("admin", "==", username)
       .get();
 
     // if (biosRef.empty) {
@@ -203,7 +202,7 @@ const getAdminBios = async (username) => {
   } catch (err) {
     return {
       status: 500,
-      errorMsg: 'Internal server error',
+      errorMsg: "Internal server error",
     };
   }
 };
@@ -212,12 +211,12 @@ const getAdminBios = async (username) => {
 // desc:   change password of admin
 // access: private
 
-router.put('/change-password', auth, async (req, res) => {
+router.put("/change-password", auth, async (req, res) => {
   const { username } = req.admin;
   const { oldPassword, newPassword } = req.body;
 
   try {
-    const adminsRef = await db.collection('admins').doc(username).get();
+    const adminsRef = await db.collection("admins").doc(username).get();
 
     bcrypt.compare(oldPassword, adminsRef.data().password, (err, isMatch) => {
       if (err) throw err;
@@ -233,25 +232,24 @@ router.put('/change-password', auth, async (req, res) => {
         if (err) throw err;
         bcrypt.hash(newPassword, salt, async (err, hashedPassword) => {
           if (err) throw err;
-          await db.collection('admins').doc(username).update({
+          await db.collection("admins").doc(username).update({
             password: hashedPassword,
           });
         });
       });
 
       res.json({
-        msg:
-          'Password changed successfully. Contact Elijah to inform him of the new password.',
+        msg: "Password changed successfully. Contact Elijah to inform him of the new password.",
       });
     });
   } catch (err) {
     return res.status(500).json({
-      errorMsg: 'Internal server error',
+      errorMsg: "Internal server error",
     });
   }
 });
 
-router.use('/bios', require('./bios'));
-router.use('/songs', require('./songs'));
+router.use("/bios", require("./bios"));
+router.use("/songs", require("./songs"));
 
 module.exports = router;

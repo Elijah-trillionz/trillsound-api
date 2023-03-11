@@ -1,7 +1,18 @@
-const express = require('express');
-const cors = require('cors');
-const path = require('path');
+const express = require("express");
+const cors = require("cors");
+require("dotenv").config();
+const fs = require("fs");
 
+const createServiceAccountJSONFile = () => {
+  const fileExists = fs.existsSync("./config/trillsound-server.json");
+  if (!fileExists) {
+    fs.writeFileSync(
+      "./config/trillsound-server.json",
+      atob(process.env.SERVICE_ACCOUNT)
+    );
+  }
+};
+createServiceAccountJSONFile();
 const app = express();
 
 // body parser
@@ -10,16 +21,9 @@ app.use(express.json());
 // cors policy
 app.use(cors());
 
-if (process.env.NODE_ENV === 'production') {
-  app.use(express.static('client/build'));
-  app.get('*', (req, res) => {
-    res.sendFile(path.resolve(__dirname, 'client/build', 'index.html'));
-  });
-}
-
 // routes
-app.use('/api/', require('./routes/client'));
-app.use('/api/admin', require('./routes/admin'));
+app.use("/api/", require("./routes/client"));
+app.use("/api/admin", require("./routes/admin"));
 
 // port - listener
 const PORT = process.env.PORT || 8000;
